@@ -12,7 +12,6 @@ import com.oleksandr073.localnotes.ui.theme.LocalNotesTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             LocalNotesTheme {
                 var notes by remember { mutableStateOf(sampleNotes()) }
@@ -23,11 +22,23 @@ class MainActivity : ComponentActivity() {
                     NoteEditorScreen(
                         note = editingNote,
                         onSave = { newNote ->
-                            notes = if (newNote.id == 0) {
-                                notes + newNote.copy(id = (notes.maxOfOrNull { it.id } ?: 0) + 1)
+                            val now = System.currentTimeMillis()
+
+                            val noteToSave = if (notes.any { it.id == newNote.id }) {
+                                newNote.copy(updatedAt = now)
                             } else {
-                                notes.map { if (it.id == newNote.id) newNote else it }
+                                newNote.copy(
+                                    createdAt = now,
+                                    updatedAt = now
+                                )
                             }
+
+                            notes = if (notes.any { it.id == noteToSave.id }) {
+                                notes.map { if (it.id == noteToSave.id) noteToSave else it }
+                            } else {
+                                notes + noteToSave
+                            }
+
                             isEditing = false
                             editingNote = null
                         },
@@ -54,7 +65,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun sampleNotes() = listOf(
-        Note(1, "Shopping List", "Milk, Bread, Eggs"),
-        Note(2, "Workout Plan", "Pushups, Squats, Plank")
+        Note(
+            title = "Shopping List",
+            content = "Milk, Bread, Eggs",
+            folderId = "home"
+        ),
+        Note(
+            title = "Workout Plan",
+            content = "Pushups, Squats, Plank",
+            folderId = "fitness"
+        )
     )
 }
