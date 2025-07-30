@@ -41,7 +41,7 @@ fun NoteEditorScreen(
                 title = { Text(if (note == null) "New Note" else "Edit Note") },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Cancel")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back to Notes")
                     }
                 },
                 actions = {

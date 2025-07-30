@@ -73,4 +73,15 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onBackPressed() {
+        // Check if we're in editing mode
+        if (viewModel.uiState.value.isEditing) {
+            // If we're editing, cancel editing and go back to note list
+            viewModel.cancelEditing()
+        } else {
+            // If we're on the note list, close the app
+            super.onBackPressed()
+        }
+    }
 }
