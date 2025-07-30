@@ -3,77 +3,74 @@ package com.oleksandr073.localnotes
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
-import com.oleksandr073.localnotes.model.Note
+import androidx.compose.ui.platform.LocalContext
 import com.oleksandr073.localnotes.ui.NoteEditorScreen
 import com.oleksandr073.localnotes.ui.NoteListScreen
+import com.oleksandr073.localnotes.ui.components.ErrorSnackbar
 import com.oleksandr073.localnotes.ui.theme.LocalNotesTheme
+import com.oleksandr073.localnotes.viewmodel.NotesViewModel
 
 class MainActivity : ComponentActivity() {
+    private val viewModel: NotesViewModel by viewModels()
+
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             LocalNotesTheme {
-                var notes by remember { mutableStateOf(sampleNotes()) }
-                var editingNote by remember { mutableStateOf<Note?>(null) }
-                var isEditing by remember { mutableStateOf(false) }
-
-                if (isEditing) {
-                    NoteEditorScreen(
-                        note = editingNote,
-                        onSave = { newNote ->
-                            val now = System.currentTimeMillis()
-
-                            val noteToSave = if (notes.any { it.id == newNote.id }) {
-                                newNote.copy(updatedAt = now)
-                            } else {
-                                newNote.copy(
-                                    createdAt = now,
-                                    updatedAt = now
-                                )
-                            }
-
-                            notes = if (notes.any { it.id == noteToSave.id }) {
-                                notes.map { if (it.id == noteToSave.id) noteToSave else it }
-                            } else {
-                                notes + noteToSave
-                            }
-
-                            isEditing = false
-                            editingNote = null
-                        },
-                        onCancel = {
-                            isEditing = false
-                            editingNote = null
-                        }
+                val uiState by viewModel.uiState.collectAsState()
+                val snackbarHostState = remember { SnackbarHostState() }
+                
+                Scaffold(
+                    snackbarHost = { SnackbarHost(snackbarHostState) }
+                ) { padding ->
+                    ErrorSnackbar(
+                        error = uiState.error,
+                        snackbarHostState = snackbarHostState,
+                        onErrorShown = { viewModel.clearError() }
                     )
-                } else {
-                    NoteListScreen(
-                        notes = notes,
-                        onNoteClick = {
-                            editingNote = it
-                            isEditing = true
-                        },
-                        onAddClick = {
-                            editingNote = null
-                            isEditing = true
+
+                    if (uiState.isEditing) {
+                        NoteEditorScreen(
+                            note = uiState.editingNote,
+                            onSave = { note ->
+                                viewModel.saveNote(note)
+                            },
+                            onCancel = {
+                                viewModel.cancelEditing()
+                            }
+                        )
+                    } else {
+                        Box(modifier = androidx.compose.ui.Modifier.padding(padding)) {
+                            NoteListScreen(
+                                notes = uiState.filteredNotes,
+                                searchQuery = uiState.searchQuery,
+                                isLoading = uiState.isLoading,
+                                onNoteClick = { note ->
+                                    viewModel.startEditing(note)
+                                },
+                                onAddClick = {
+                                    viewModel.startEditing(null)
+                                },
+                                onSearchQueryChange = { query ->
+                                    viewModel.updateSearchQuery(query)
+                                },
+                                onDeleteNote = { noteId ->
+                                    viewModel.deleteNote(noteId)
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
     }
-
-    private fun sampleNotes() = listOf(
-        Note(
-            title = "Shopping List",
-            content = "Milk, Bread, Eggs",
-            folderId = "home"
-        ),
-        Note(
-            title = "Workout Plan",
-            content = "Pushups, Squats, Plank",
-            folderId = "fitness"
-        )
-    )
 }
